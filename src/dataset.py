@@ -30,6 +30,7 @@ class GTZANDataset(Dataset):
             raise FileNotFoundError(f"Could not find valid genre folders in any expected locations")
                 
         self.files = self._get_files()
+        self.valid_files = []
         
         # preprocessing parameters
         self.sample_rate = 22050
@@ -38,6 +39,17 @@ class GTZANDataset(Dataset):
         self.time_steps = 130
         self.n_fft = 2048
         self.hop_length = 512
+
+        print("Validating audio files...")
+        for file_path, genre in self.files:
+            try:
+                audio, _ = librosa.load(file_path, sr=self.sample_rate, duration=0.1)
+                self.valid_files.append((file_path, genre))
+            except Exception as e:
+                print(f"Skipping {file_path}: {str(e)}")
+        
+        print(f"Successfully validated {len(self.valid_files)} of {len(self.files)} files")
+        self.files = self.valid_files
 
     def __len__(self):
         return len(self.files)
@@ -69,10 +81,8 @@ class GTZANDataset(Dataset):
             else:
                 mel_spec_db = mel_spec_db[:, :self.time_steps]
             
-            # Normalize
             mel_spec_db = (mel_spec_db - mel_spec_db.min()) / (mel_spec_db.max() - mel_spec_db.min())
             
-            # Convert to tensor
             mel_spec_tensor = torch.FloatTensor(mel_spec_db).unsqueeze(0)
             label = torch.tensor(self.class_to_idx[genre])
             
@@ -80,8 +90,8 @@ class GTZANDataset(Dataset):
             
        except Exception as e:
             print(f"Error loading file {file_path}: {str(e)}")
-            # Return a zero tensor with correct dimensions and -1 label
             return torch.zeros((1, self.n_mels, self.time_steps)), torch.tensor(-1)
+       
     def _get_files(self):
         files = []
         for genre in self.classes:
