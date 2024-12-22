@@ -1,0 +1,4 @@
+data/*
+!data/dataset_download.py
+src/__pycache__/dataset.cpython-312.pyc
+kaggle.json
